@@ -1,0 +1,54 @@
+:root {
+  /* Base colors (UI spec v1, section 0.2) */
+  --color-background: #fafafc;
+  --color-surface: #ffffff;
+  --color-ink: #111827;
+  --color-body: #1f2937;
+  --color-secondary: #6b7280;
+  --color-faint: #9ca3af;
+  --color-hairline: #e5e7eb;
+  --color-fill: #f3f4f6;
+  --color-brand: #6366f1;
+  --color-brand-soft: #eef2ff;
+  --color-success: #16a34a;
+  --color-success-bg: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-bg: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+
+  /* Tool colors (UI spec v1, section 0.3) */
+  --color-tool-cpk: #6366f1;
+  --color-tool-msa: #10b981;
+  --color-tool-8d: #2563eb;
+  --color-tool-reliability: #f97316;
+  --color-tool-doe: #8b5cf6;
+  --color-tool-sampling: #14b8a6;
+  --color-tool-spc: #111827;
+
+  /* Typography scale (UI spec v1, section 0.4) */
+  --font-size-brand: 17px;
+  --font-size-title: clamp(22px, 6.2vw, 26px);
+  --font-size-section: clamp(15px, 4.2vw, 17px);
+  --font-size-card-title: 15px;
+  --font-size-body: 13px;
+  --font-size-meta: 11px;
+  --font-size-chip: 11px;
+  --font-size-button: 15px;
+  --font-size-metric: clamp(15px, 4.6vw, 18px);
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Layout & shape (UI spec v1, section 0.5) */
+  --space-page-padding: clamp(16px, 6vw, 24px);
+  --content-width: min(calc(100vw - 2 * var(--space-page-padding)), 382px);
+  --header-height: 52px;
+  --bottom-nav-height: 72px;
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-chip: 999px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
