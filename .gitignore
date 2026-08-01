@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+
+# Xcode / iOS
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Android
+.gradle/
+build/
+local.properties
+
+# Node.js / JavaScript tooling (if adopted)
+node_modules/
+dist/
+
+# Flutter / Dart (if adopted)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# OS / misc
+.DS_Store
+Thumbs.db
