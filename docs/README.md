@@ -10,6 +10,7 @@ This directory is the documentation home for Blendex Labs Mobile. It is maintain
 | [Local-first principle](architecture/local-first.md) | What local-first means and the design implications |
 | [AI boundary](architecture/ai-boundary.md) | What AI may and may not do, and how to enforce it |
 | [Phase 1 scope](architecture/phase-1-scope.md) | Explicit in/out-of-scope list; the "no SaaS" constraint |
+| [UI specification v1](ui/blendex-labs-mobile-ui-spec-v1.md) | Approved mobile UI specification: design foundations, 15 page specs, states, and component library |
 
 ## Decision records
 
