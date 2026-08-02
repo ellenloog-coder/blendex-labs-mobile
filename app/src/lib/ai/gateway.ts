@@ -41,6 +41,14 @@ export interface AskAssistantOptions {
   language: 'en' | 'zh';
   /** Optional, caller-approved context summary (e.g. current page name). */
   contextSummary?: string;
+  /** Optional non-sensitive page context for CPK-style reports (privacy-filtered). */
+  aiContext?: AiChatContext;
+}
+
+export interface AiChatContext {
+  toolType: string;
+  summaryMetrics: Record<string, string | number>;
+  deterministicInterpretation: string;
 }
 
 export const DEFAULT_AI_WORKER_URL =
@@ -76,14 +84,27 @@ export async function askAssistant(
   const contextSummary = (options.contextSummary ?? '').trim().slice(0, CONTEXT_MAX);
 
   // Privacy boundary: the payload contains only these fields.
-  const payload: Record<string, unknown> = {
-    task: 'quality_engineering_chat',
-    current_tool: 'mobile-assistant',
-    language: options.language,
-    user_question: trimmed,
-  };
-  if (history.length > 0) payload.conversation_history = history;
-  if (contextSummary) payload.available_context = [contextSummary];
+  const payload: Record<string, unknown> = options.aiContext
+    ? {
+        // `chat` task supports page context (summary metrics + deterministic
+        // interpretation) per the Worker contract; never raw data.
+        task: 'chat',
+        current_tool: options.aiContext.toolType,
+        analysis_type: options.aiContext.toolType,
+        language: options.language,
+        messages: [...history, { role: 'user', content: trimmed }],
+        summary_metrics: options.aiContext.summaryMetrics,
+        deterministic_interpretation: options.aiContext.deterministicInterpretation.slice(0, 1800),
+        requires_page_context: true,
+      }
+    : {
+        task: 'quality_engineering_chat',
+        current_tool: 'mobile-assistant',
+        language: options.language,
+        user_question: trimmed,
+      };
+  if (!options.aiContext && history.length > 0) payload.conversation_history = history;
+  if (!options.aiContext && contextSummary) payload.available_context = [contextSummary];
 
   const url = aiWorkerUrl();
   if (!url.startsWith('https://')) {

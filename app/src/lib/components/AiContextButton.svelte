@@ -8,11 +8,12 @@
   let {
     label,
     chips = [],
-  }: { label: string; chips?: string[] } = $props();
+    onclick,
+  }: { label: string; chips?: string[]; onclick?: () => void } = $props();
 </script>
 
 <div class="ai-cta">
-  <button class="ai-btn" disabled>
+  <button class="ai-btn" disabled={!onclick} onclick={onclick}>
     <Icon name="assistant" size={18} />
     <span>{label}</span>
   </button>
@@ -44,6 +45,8 @@
     color: var(--color-surface);
     font-size: 15px;
     font-weight: var(--font-weight-semibold);
+  }
+  .ai-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }

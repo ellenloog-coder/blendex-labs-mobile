@@ -53,7 +53,7 @@ describe('CPK analysis page', () => {
     expect(screen.getByText('Sample size')).toBeTruthy();
     expect(screen.getByText('Insights')).toBeTruthy();
     expect(screen.getByText('Actions')).toBeTruthy();
-    expect(screen.getByText(/AI context preview/)).toBeTruthy();
+    expect(screen.getByText(/Only summary metrics and deterministic insights/)).toBeTruthy();
   });
 
   it('renders a below-requirement result when the index is below the benchmark', async () => {

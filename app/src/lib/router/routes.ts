@@ -9,6 +9,7 @@ import KnowledgeCategoryPage from '../pages/knowledge/KnowledgeCategoryPage.svel
 import ArticleReaderPage from '../pages/knowledge/ArticleReaderPage.svelte';
 import ToolPreviewPage from '../pages/ToolPreviewPage.svelte';
 import ReportDetailPage from '../pages/ReportDetailPage.svelte';
+import CpkReportDetailPage from '../pages/reports/CpkReportDetailPage.svelte';
 
 export type RouteName =
   | 'home'
@@ -20,7 +21,8 @@ export type RouteName =
   | 'knowledge-category'
   | 'knowledge-article'
   | 'tool-preview'
-  | 'report-detail';
+  | 'report-detail'
+  | 'cpk-report-detail';
 
 export type RouteParams = Record<string, string>;
 
@@ -91,6 +93,13 @@ export const routes: AppRoute[] = [
     component: ReportDetailPage,
     titleKey: 'nav.reports',
     matcher: patternMatcher('/reports/:reportId'),
+  },
+  {
+    path: '/reports/cpk/:reportId',
+    name: 'cpk-report-detail',
+    component: CpkReportDetailPage,
+    titleKey: 'nav.reports',
+    matcher: patternMatcher('/reports/cpk/:reportId'),
   },
 ];
 

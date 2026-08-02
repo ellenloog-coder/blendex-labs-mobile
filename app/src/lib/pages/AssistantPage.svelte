@@ -5,6 +5,8 @@
   import Chip from '../components/Chip.svelte';
   import Icon from '../components/Icon.svelte';
   import { askAssistant } from '../ai/gateway';
+  import { consumePendingAiContext } from '../ai/pending-context';
+  import type { PendingAiContext } from '../ai/pending-context';
   import {
     appendMessage,
     createConversation,
@@ -29,10 +31,16 @@
   let draft = $state('');
   let busy = $state(false);
   let lastQuestion = $state('');
+  let lastAiContext: PendingAiContext | null = null;
   let recent = $state<Conversation[]>([]);
 
   onMount(async () => {
     recent = await listConversations(10);
+    const pending = consumePendingAiContext();
+    if (pending) {
+      draft = pending.question;
+      void sendMessage(pending.question, pending);
+    }
   });
 
   async function ensureConversation(): Promise<string> {
@@ -42,7 +50,7 @@
     return conversation.id;
   }
 
-  async function sendMessage(content?: string): Promise<void> {
+  async function sendMessage(content?: string, aiContext?: PendingAiContext): Promise<void> {
     const text = (content ?? draft).trim();
     if (!text || busy) return;
 
@@ -57,6 +65,7 @@
     messages = [...messages, userMessage];
     draft = '';
     lastQuestion = text;
+    lastAiContext = aiContext ?? null;
     busy = true;
     messages = [
       ...messages,
@@ -73,6 +82,15 @@
       const answer = await askAssistant(text, {
         history,
         language: get(locale) === 'zh-CN' ? 'zh' : 'en',
+        ...(aiContext
+          ? {
+              aiContext: {
+                toolType: aiContext.toolType,
+                summaryMetrics: aiContext.summaryMetrics,
+                deterministicInterpretation: aiContext.deterministicInterpretation,
+              },
+            }
+          : {}),
       });
       messages = messages.filter((message) => !message.pending);
       const assistantMessage = await appendMessage(id, 'assistant', answer);
@@ -101,7 +119,7 @@
 
   function retry(): void {
     if (!lastQuestion || busy) return;
-    void sendMessage(lastQuestion);
+    void sendMessage(lastQuestion, lastAiContext ?? undefined);
   }
 
   function onInput(event: Event): void {

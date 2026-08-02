@@ -245,7 +245,12 @@ export const zhCN = {
     estPpm: '估计总 PPM',
     normality: '正态性 (p)',
     invalid: '请先修正以下输入再分析。',
-    aiNote: 'AI 上下文预览——集成将在后续阶段提供。',
+    aiNote: '仅向 AI 服务发送摘要指标与确定性洞察，原始数据不会离开本设备。',
+    itemName: '零件 / 过程名称（可选）',
+    saveReport: '保存报告',
+    reportTitle: '过程能力报告',
+    reportsTitle: 'CPK 报告',
+    explainPrompt: '请解释这份 CPK 分析结果。',
   },
   knowledge: {
     title: '知识',

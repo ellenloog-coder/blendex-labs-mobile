@@ -11,8 +11,8 @@ describe('hash router foundation', () => {
   });
 
   it('matches the shell and knowledge routes', () => {
-    expect(routes).toHaveLength(10);
-    expect(new Set(routes.map((r) => r.path)).size).toBe(10);
+    expect(routes).toHaveLength(11);
+    expect(new Set(routes.map((r) => r.path)).size).toBe(11);
     expect(matchRoute('/workspace').route.name).toBe('workspace');
   });
 

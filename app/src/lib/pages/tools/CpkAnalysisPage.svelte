@@ -5,13 +5,17 @@
   import Button from '../../components/Button.svelte';
   import Card from '../../components/Card.svelte';
   import DecisionBanner from '../../components/DecisionBanner.svelte';
+  import CpkEvidenceRows from '../../components/tools/CpkEvidenceRows.svelte';
   import InsightList from '../../components/InsightList.svelte';
   import Input from '../../components/Input.svelte';
   import MetricSummaryBar from '../../components/MetricSummaryBar.svelte';
-  import { fmt, parseMeasurementData } from '../../../../../engines/capability/src/index.js';
+  import { parseMeasurementData } from '../../../../../engines/capability/src/index.js';
   import { runCapabilityAnalysis } from '../../tools/capability/adapter';
   import type { CapabilityOutcome } from '../../tools/capability/adapter';
+  import { decisionCardToReport } from '../../tools/capability/report';
+  import { saveCpkReport } from '../../tools/capability/report-store';
   import { locale, t } from '../../i18n';
+  import { showToast } from '../../toast';
   import type { RouteParams } from '../../router/routes';
 
   let { params = {} }: { params?: RouteParams } = $props();
@@ -21,8 +25,10 @@
   let usl = $state('10.1');
   let target = $state('10');
   let benchmark = $state('1.33');
+  let itemName = $state('');
   let outcome = $state<CapabilityOutcome | null>(null);
   let analyzing = $state(false);
+  let saved = $state(false);
 
   let parsed = $derived(parseMeasurementData(dataText));
   let lang: 'en' | 'zh' = $derived(get(locale) === 'zh-CN' ? 'zh' : 'en');
@@ -34,6 +40,7 @@
 
   function analyze(): void {
     analyzing = true;
+    saved = false;
     try {
       outcome = runCapabilityAnalysis({
         data: parsed.valid,
@@ -46,6 +53,17 @@
     } finally {
       analyzing = false;
     }
+  }
+
+  async function saveReport(): Promise<void> {
+    if (!outcome?.ok) return;
+    const report = decisionCardToReport(outcome.card, {
+      title: itemName.trim() || get(t)('cpk.reportTitle'),
+      language: lang,
+    });
+    await saveCpkReport(report);
+    saved = true;
+    showToast(get(t)('reports.saved'), 'success');
   }
 
   function bannerTone(decision: 'meets' | 'below' | 'na'): 'success' | 'warning' | 'danger' {
@@ -95,6 +113,12 @@
 
   <Card>
     <h3 class="section-label">{$t('cpk.specsTitle')}</h3>
+    <Input
+      label={$t('cpk.itemName')}
+      type="text"
+      value={itemName}
+      oninput={(event) => (itemName = (event.currentTarget as HTMLInputElement).value)}
+    />
     <div class="spec-grid">
       <Input
         label={$t('cpk.lsl')}
@@ -149,17 +173,7 @@
 
       <Card>
         <h3 class="section-label">{$t('cpk.evidenceTitle')}</h3>
-        <div class="evidence">
-          <div class="row"><span>{$t('cpk.sampleSize')}</span><span class="tabular">{card.evidence.sampleSize}</span></div>
-          <div class="row"><span>{$t('cpk.mean')}</span><span class="tabular">{fmt(card.evidence.mean)}</span></div>
-          <div class="row"><span>{$t('cpk.withinStd')}</span><span class="tabular">{fmt(card.evidence.withinStdDev)}</span></div>
-          <div class="row"><span>{$t('cpk.overallStd')}</span><span class="tabular">{fmt(card.evidence.overallStdDev)}</span></div>
-          <div class="row"><span>{$t('cpk.min')}</span><span class="tabular">{fmt(card.evidence.min)}</span></div>
-          <div class="row"><span>{$t('cpk.max')}</span><span class="tabular">{fmt(card.evidence.max)}</span></div>
-          <div class="row"><span>{$t('cpk.oos')}</span><span class="tabular">{card.evidence.oos}</span></div>
-          <div class="row"><span>{$t('cpk.estPpm')}</span><span class="tabular">{fmt(card.evidence.estimatedPpm.total)}</span></div>
-          <div class="row"><span>{$t('cpk.normality')}</span><span class="tabular">{fmt(card.evidence.normality.pValue)}</span></div>
-        </div>
+        <CpkEvidenceRows evidence={card.evidence} />
       </Card>
 
       <Card>
@@ -182,6 +196,14 @@
         chips={['Cp ' + card.aiContext.summaryMetrics.Cp, 'Cpk ' + card.aiContext.summaryMetrics.Cpk, 'n ' + card.aiContext.summaryMetrics.n]}
       />
       <p class="note note-center">{$t('cpk.aiNote')}</p>
+
+      {#if saved}
+        <p class="note note-center">{$t('reports.saved')}</p>
+      {:else}
+        <Button variant="secondary" onclick={saveReport}>
+          {$t('cpk.saveReport')}
+        </Button>
+      {/if}
     {:else}
       <Card>
         <h3 class="section-label">{$t('cpk.invalid')}</h3>
@@ -223,25 +245,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 10px;
-  }
-  .evidence {
-    margin-top: 10px;
-  }
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 38px;
-    border-bottom: 1px solid var(--color-hairline);
-    font-size: 14px;
-    color: var(--color-ink);
-  }
-  .row:last-child {
-    border-bottom: none;
-  }
-  .row span:last-child {
-    color: var(--color-secondary);
   }
   .errors {
     display: flex;

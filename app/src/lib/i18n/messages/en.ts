@@ -248,7 +248,12 @@ export const en = {
     estPpm: 'Estimated total PPM',
     normality: 'Normality (p)',
     invalid: 'Please fix the inputs below before analyzing.',
-    aiNote: 'AI context preview — integration arrives in a later phase.',
+    aiNote: 'Only summary metrics and deterministic insights are sent to the AI service. Raw data never leaves this device.',
+    itemName: 'Item / Part Name (optional)',
+    saveReport: 'Save Report',
+    reportTitle: 'Process Capability Report',
+    reportsTitle: 'CPK Reports',
+    explainPrompt: 'Explain this CPK analysis result.',
   },
   knowledge: {
     title: 'Knowledge',

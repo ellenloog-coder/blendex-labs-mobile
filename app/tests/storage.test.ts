@@ -27,6 +27,7 @@ describe('IndexedDB storage foundation', () => {
     expect(db.objectStoreNames.contains('drafts')).toBe(true);
     expect(db.objectStoreNames.contains('knowledgeProgress')).toBe(true);
     expect(db.objectStoreNames.contains('conversations')).toBe(true);
+    expect(db.objectStoreNames.contains('reports')).toBe(true);
   });
 
   it('round-trips settings records', async () => {
