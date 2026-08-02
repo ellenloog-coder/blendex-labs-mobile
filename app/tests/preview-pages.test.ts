@@ -37,14 +37,14 @@ describe('product preview pages', () => {
     render(App);
     fireEvent.click(screen.getByRole('button', { name: 'Workspace' }));
     await tick();
-    fireEvent.click(screen.getAllByText('CPK Analysis')[0]);
+    fireEvent.click(screen.getAllByText('MSA Analysis')[0]);
     await tick();
 
     expect(screen.getByText('Expected flow')).toBeTruthy();
     expect(
       screen.getByText('Preview build — engine integration arrives in Phase 1.'),
     ).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('CPK Analysis');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('MSA Analysis');
   });
 
   it('home shows hero, quick tools, reports, knowledge and copilot entries', async () => {

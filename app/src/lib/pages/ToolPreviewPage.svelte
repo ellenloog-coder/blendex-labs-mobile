@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CpkAnalysisPage from './tools/CpkAnalysisPage.svelte';
   import Button from '../components/Button.svelte';
   import Card from '../components/Card.svelte';
   import EmptyState from '../components/EmptyState.svelte';
@@ -21,6 +22,9 @@
 </script>
 
 {#if tool}
+  {#if tool.id === 'cpk'}
+    <CpkAnalysisPage />
+  {:else}
   <section class="page">
     <header class="tool-hero">
       <span class="tool-icon" style={`--tool-color: ${tool.colorVar}`}>{initials}</span>
@@ -45,6 +49,7 @@
     <Button disabled>{$t('toolPreview.analyze')}</Button>
     <p class="note note-center">{$t('toolPreview.note')}</p>
   </section>
+  {/if}
 {:else}
   <section class="page">
     <EmptyState message={$t('toolPreview.notImplemented')} />

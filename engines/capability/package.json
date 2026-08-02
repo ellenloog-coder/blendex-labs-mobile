@@ -1,0 +1,14 @@
+{
+  "name": "@blendex/capability-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic process capability engine extracted from the Blendex Labs CPK tool (ADR-0003).",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test tests/capability-engine.test.js"
+  }
+}
