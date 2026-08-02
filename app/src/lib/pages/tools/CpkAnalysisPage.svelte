@@ -1,5 +1,6 @@
 <script lang="ts">
   import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import ActionList from '../../components/ActionList.svelte';
   import AiContextButton from '../../components/AiContextButton.svelte';
   import Button from '../../components/Button.svelte';
@@ -14,8 +15,11 @@
   import type { CapabilityOutcome } from '../../tools/capability/adapter';
   import { decisionCardToReport } from '../../tools/capability/report';
   import { saveCpkReport } from '../../tools/capability/report-store';
+  import { setPendingAiContext } from '../../ai/pending-context';
+  import { clearCpkSession, loadCpkSession, saveCpkSession } from '../../tools/capability/cpk-session';
   import { locale, t } from '../../i18n';
   import { showToast } from '../../toast';
+  import { navigate } from '../../router';
   import type { RouteParams } from '../../router/routes';
 
   let { params = {} }: { params?: RouteParams } = $props();
@@ -29,6 +33,25 @@
   let outcome = $state<CapabilityOutcome | null>(null);
   let analyzing = $state(false);
   let saved = $state(false);
+
+  onMount(() => {
+    const restored = loadCpkSession();
+    if (restored) {
+      dataText = restored.dataText;
+      lsl = restored.lsl;
+      usl = restored.usl;
+      target = restored.target;
+      benchmark = restored.benchmark;
+      itemName = restored.itemName;
+      outcome = restored.outcome;
+    }
+  });
+
+  $effect(() => {
+    // Keep the analysis alive when the user switches to the AI Assistant
+    // and comes back (in-memory only; raw data never touches disk).
+    saveCpkSession({ dataText, lsl, usl, target, benchmark, itemName, outcome });
+  });
 
   let parsed = $derived(parseMeasurementData(dataText));
   let lang: 'en' | 'zh' = $derived(get(locale) === 'zh-CN' ? 'zh' : 'en');
@@ -57,13 +80,29 @@
 
   async function saveReport(): Promise<void> {
     if (!outcome?.ok) return;
-    const report = decisionCardToReport(outcome.card, {
-      title: itemName.trim() || get(t)('cpk.reportTitle'),
-      language: lang,
+    try {
+      const report = decisionCardToReport(outcome.card, {
+        title: itemName.trim() || get(t)('cpk.reportTitle'),
+        language: lang,
+      });
+      await saveCpkReport(report);
+      saved = true;
+      showToast(get(t)('reports.saved'), 'success');
+    } catch {
+      showToast(get(t)('cpk.saveFailed'), 'danger');
+    }
+  }
+
+  function askAi(): void {
+    if (!outcome?.ok) return;
+    const card = outcome.card;
+    setPendingAiContext({
+      toolType: 'process_capability',
+      summaryMetrics: { ...card.aiContext.summaryMetrics },
+      deterministicInterpretation: card.aiContext.deterministicInterpretation,
+      question: get(t)('cpk.explainPrompt'),
     });
-    await saveCpkReport(report);
-    saved = true;
-    showToast(get(t)('reports.saved'), 'success');
+    navigate('/assistant');
   }
 
   function bannerTone(decision: 'meets' | 'below' | 'na'): 'success' | 'warning' | 'danger' {
@@ -161,6 +200,14 @@
         title={label(card.status.label)}
       />
 
+      {#if saved}
+        <p class="note note-center">{$t('reports.saved')}</p>
+      {:else}
+        <Button variant="secondary" onclick={saveReport}>
+          {$t('cpk.saveReport')}
+        </Button>
+      {/if}
+
       <Card padded={false}>
         <MetricSummaryBar
           items={card.metrics.map((metric) => ({
@@ -194,16 +241,9 @@
       <AiContextButton
         label={$t('home.copilotEntry')}
         chips={['Cp ' + card.aiContext.summaryMetrics.Cp, 'Cpk ' + card.aiContext.summaryMetrics.Cpk, 'n ' + card.aiContext.summaryMetrics.n]}
+        onclick={askAi}
       />
       <p class="note note-center">{$t('cpk.aiNote')}</p>
-
-      {#if saved}
-        <p class="note note-center">{$t('reports.saved')}</p>
-      {:else}
-        <Button variant="secondary" onclick={saveReport}>
-          {$t('cpk.saveReport')}
-        </Button>
-      {/if}
     {:else}
       <Card>
         <h3 class="section-label">{$t('cpk.invalid')}</h3>

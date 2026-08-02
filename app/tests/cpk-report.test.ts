@@ -6,6 +6,7 @@ import {
   listCpkReports,
   saveCpkReport,
 } from '../src/lib/tools/capability/report-store';
+import { buildReportText } from '../src/lib/tools/capability/report-export';
 import { askAssistant } from '../src/lib/ai/gateway';
 
 function fakeResponse(status: number, body: unknown): Response {
@@ -70,6 +71,20 @@ describe('CPK report model', () => {
     const list = await listCpkReports(10);
     expect(list.length).toBeGreaterThanOrEqual(2);
     expect(list[0].id).toBe(second.id); // newest first
+  });
+
+  it('builds an exportable markdown report without raw data', () => {
+    const report = decisionCardToReport(sampleCard(), { title: 'Connector Diameter', language: 'en' });
+    const text = buildReportText(report, 'en');
+    expect(text).toContain('# Connector Diameter');
+    expect(text).toContain('## Metrics');
+    expect(text).toContain('- Cp: 1.054');
+    expect(text).toContain('## Evidence');
+    expect(text).toContain('## Insights');
+    expect(text).toContain('## Actions');
+    // Raw measurements are never exported (9.98 is a dataset value that is
+    // neither min nor max, so it must not appear anywhere in the export).
+    expect(text).not.toContain('9.98');
   });
 });
 

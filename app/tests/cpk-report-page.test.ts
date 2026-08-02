@@ -45,6 +45,7 @@ describe('CPK report detail page', () => {
     expect(screen.getByText('Insights')).toBeTruthy();
     expect(screen.getByText('Actions')).toBeTruthy();
     expect(screen.getByText(/Only summary metrics and deterministic insights/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Export Report' })).toBeTruthy();
 
     const aiButton = screen.getByRole('button', { name: 'Ask the AI Copilot' });
     expect(aiButton.hasAttribute('disabled')).toBe(false);

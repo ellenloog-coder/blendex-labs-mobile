@@ -254,6 +254,9 @@ export const en = {
     reportTitle: 'Process Capability Report',
     reportsTitle: 'CPK Reports',
     explainPrompt: 'Explain this CPK analysis result.',
+    exportReport: 'Export Report',
+    exported: 'Report exported',
+    saveFailed: 'Could not save the report.',
   },
   knowledge: {
     title: 'Knowledge',

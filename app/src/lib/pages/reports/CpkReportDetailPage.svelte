@@ -4,6 +4,7 @@
   import ActionList from '../../components/ActionList.svelte';
   import AiContextButton from '../../components/AiContextButton.svelte';
   import Card from '../../components/Card.svelte';
+  import Button from '../../components/Button.svelte';
   import CpkEvidenceRows from '../../components/tools/CpkEvidenceRows.svelte';
   import DecisionBanner from '../../components/DecisionBanner.svelte';
   import EmptyState from '../../components/EmptyState.svelte';
@@ -12,8 +13,10 @@
   import { setPendingAiContext } from '../../ai/pending-context';
   import { getCpkReport } from '../../tools/capability/report-store';
   import type { CpkReport } from '../../tools/capability/report';
+  import { exportCpkReport } from '../../tools/capability/report-export';
   import { locale, t } from '../../i18n';
   import { navigate } from '../../router';
+  import { showToast } from '../../toast';
   import type { RouteParams } from '../../router/routes';
 
   let { params = {} }: { params?: RouteParams } = $props();
@@ -45,6 +48,12 @@
       question: get(t)('cpk.explainPrompt'),
     });
     navigate('/assistant');
+  }
+
+  async function onExport(): Promise<void> {
+    if (!report) return;
+    await exportCpkReport(report, get(locale) === 'zh-CN' ? 'zh' : 'en');
+    showToast(get(t)('cpk.exported'), 'success');
   }
 </script>
 
@@ -119,6 +128,9 @@
       chips={['Cp ' + report.aiContext.summaryMetrics.Cp, 'Cpk ' + report.aiContext.summaryMetrics.Cpk, 'n ' + report.aiContext.summaryMetrics.n]}
       onclick={askAi}
     />
+    <Button variant="secondary" onclick={onExport}>
+      {$t('cpk.exportReport')}
+    </Button>
     <p class="note note-center">{$t('cpk.aiNote')}</p>
   </section>
 {:else}

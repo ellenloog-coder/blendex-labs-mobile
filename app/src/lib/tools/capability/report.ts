@@ -55,7 +55,41 @@ export function decisionCardToReport(
       title: options.language === 'zh' ? card.status.label.zh : card.status.label.en,
     },
     metrics: card.metrics.map((metric) => ({ ...metric })),
-    evidence: card.evidence,
+    // Deep-copy into plain objects: $state-proxied values are not
+    // structured-cloneable (IndexedDB throws DataCloneError).
+    evidence: {
+      sampleSize: card.evidence.sampleSize,
+      mean: card.evidence.mean,
+      withinStdDev: card.evidence.withinStdDev,
+      overallStdDev: card.evidence.overallStdDev,
+      min: card.evidence.min,
+      max: card.evidence.max,
+      oos: card.evidence.oos,
+      estimatedPpm: {
+        below: card.evidence.estimatedPpm.below,
+        above: card.evidence.estimatedPpm.above,
+        total: card.evidence.estimatedPpm.total,
+      },
+      normality: {
+        pValue: card.evidence.normality.pValue,
+        status: card.evidence.normality.status,
+        text: card.evidence.normality.text,
+      },
+      histogram: {
+        bins: card.evidence.histogram.bins.map((bin) => ({
+          start: bin.start,
+          end: bin.end,
+          count: bin.count,
+        })),
+        maxCount: card.evidence.histogram.maxCount,
+      },
+      subgroup: {
+        provided: card.evidence.subgroup.provided,
+        count: card.evidence.subgroup.count,
+        averageSize: card.evidence.subgroup.averageSize,
+      },
+      sameStdDevNote: card.evidence.sameStdDevNote,
+    },
     insights: card.insights.map((insight) => ({ ...insight })),
     actions: [...card.actions],
     chart: card.evidence.histogram.bins.map((bin) => bin.count),

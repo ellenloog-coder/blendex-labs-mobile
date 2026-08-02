@@ -251,6 +251,9 @@ export const zhCN = {
     reportTitle: '过程能力报告',
     reportsTitle: 'CPK 报告',
     explainPrompt: '请解释这份 CPK 分析结果。',
+    exportReport: '导出报告',
+    exported: '报告已导出',
+    saveFailed: '报告保存失败，请重试。',
   },
   knowledge: {
     title: '知识',
