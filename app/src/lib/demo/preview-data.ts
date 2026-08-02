@@ -245,34 +245,6 @@ export function getSampleReport(id: string): SampleReport | undefined {
   return sampleReports.find((report) => report.id === id);
 }
 
-export interface DemoConversationItem {
-  id: string;
-  titleKey: string;
-  summaryKey: string;
-  timeKey: string;
-}
-
-export const demoRecentConversations: DemoConversationItem[] = [
-  {
-    id: 'c1',
-    titleKey: 'assistant.recent.c1',
-    summaryKey: 'assistant.recent.c1Summary',
-    timeKey: 'assistant.time.h2',
-  },
-  {
-    id: 'c2',
-    titleKey: 'assistant.recent.c2',
-    summaryKey: 'assistant.recent.c2Summary',
-    timeKey: 'assistant.time.d1',
-  },
-  {
-    id: 'c3',
-    titleKey: 'assistant.recent.c3',
-    summaryKey: 'assistant.recent.c3Summary',
-    timeKey: 'assistant.time.d2',
-  },
-];
-
 export const demoPopularTopics: string[] = [
   'assistant.topics.t1',
   'assistant.topics.t2',
@@ -281,13 +253,3 @@ export const demoPopularTopics: string[] = [
   'assistant.topics.t5',
   'assistant.topics.t6',
 ];
-
-/** Picks a localized demo reply key. No AI backend is involved. */
-export function pickDemoReply(message: string): string {
-  const text = message.toLowerCase();
-  if (/cpk|ppk|capabilit|c[ap]/.test(text)) return 'assistant.demoReply.cpk';
-  if (/msa|grr|kappa|gage/.test(text)) return 'assistant.demoReply.msa';
-  if (/spc|control chart|trend|sigma/.test(text)) return 'assistant.demoReply.spc';
-  if (/doe|factorial|design|factor/.test(text)) return 'assistant.demoReply.doe';
-  return 'assistant.demoReply.general';
-}

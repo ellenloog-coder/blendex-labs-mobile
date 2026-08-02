@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import App from '../src/App.svelte';
 import { route } from '../src/lib/router';
+import { askAssistant } from '../src/lib/ai/gateway';
+
+vi.mock('../src/lib/ai/gateway', () => ({
+  askAssistant: vi.fn(),
+}));
 
 describe('product preview pages', () => {
   it('workspace lists all quality tools with realistic statuses', async () => {
@@ -99,7 +104,10 @@ describe('product preview pages', () => {
     );
   });
 
-  it('runs a local demo conversation in the AI assistant', async () => {
+  it('sends a question and renders the real AI response', async () => {
+    vi.mocked(askAssistant).mockResolvedValue(
+      'Cpk should be read with stability and MSA context.',
+    );
     route.set('/');
     render(App);
     fireEvent.click(screen.getByRole('button', { name: 'AI Assistant' }));
@@ -110,11 +118,51 @@ describe('product preview pages', () => {
     );
     await fireEvent.input(input, { target: { value: 'explain cpk 1.12' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const thread = () => screen.getByLabelText('Conversation');
+    await waitFor(() => expect(within(thread()).getByText('explain cpk 1.12')).toBeTruthy());
+    expect(within(thread()).getByText('Thinking…')).toBeTruthy();
+    expect(vi.mocked(askAssistant)).toHaveBeenCalledWith(
+      'explain cpk 1.12',
+      expect.objectContaining({ language: 'en' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(thread()).getByText('Cpk should be read with stability and MSA context.'),
+      ).toBeTruthy(),
+    );
+    expect(within(thread()).queryByText('Thinking…')).toBeNull();
+  });
+
+  it('shows an error bubble with retry when the AI service fails', async () => {
+    vi.mocked(askAssistant).mockRejectedValueOnce({ code: 'network', retryable: true });
+    route.set('/');
+    render(App);
+    fireEvent.click(screen.getByRole('button', { name: 'AI Assistant' }));
     await tick();
 
-    expect(screen.getByText('explain cpk 1.12')).toBeTruthy();
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    expect(screen.getAllByText(/Demo \(Cpk\)/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Demo mode: replies are local samples/)).toBeTruthy();
+    const input = screen.getByPlaceholderText(
+      'Ask anything about quality, analysis, standards...',
+    );
+    await fireEvent.input(input, { target: { value: 'what is spc?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const thread = () => screen.getByLabelText('Conversation');
+    await waitFor(() =>
+      expect(
+        within(thread()).getByText(
+          'The AI service is temporarily unavailable. Please try again.',
+        ),
+      ).toBeTruthy(),
+    );
+    const retryButton = screen.getByRole('button', { name: 'Retry' });
+
+    vi.mocked(askAssistant).mockResolvedValueOnce('SPC monitors stability over time.');
+    fireEvent.click(retryButton);
+
+    await waitFor(() =>
+      expect(within(thread()).getByText('SPC monitors stability over time.')).toBeTruthy(),
+    );
   });
 });

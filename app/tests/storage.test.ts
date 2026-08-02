@@ -13,6 +13,12 @@ import {
   getRecentProgress,
   saveProgress,
 } from '../src/lib/knowledge/progress';
+import {
+  appendMessage,
+  createConversation,
+  getConversation,
+  listConversations,
+} from '../src/lib/ai/conversation-store';
 
 describe('IndexedDB storage foundation', () => {
   it('creates the expected object stores', async () => {
@@ -20,6 +26,7 @@ describe('IndexedDB storage foundation', () => {
     expect(db.objectStoreNames.contains('settings')).toBe(true);
     expect(db.objectStoreNames.contains('drafts')).toBe(true);
     expect(db.objectStoreNames.contains('knowledgeProgress')).toBe(true);
+    expect(db.objectStoreNames.contains('conversations')).toBe(true);
   });
 
   it('round-trips settings records', async () => {
@@ -57,5 +64,24 @@ describe('IndexedDB storage foundation', () => {
 
     const recent = await getRecentProgress(5);
     expect(recent.some((item) => item.slug === 'cp-cpk-pp-ppk')).toBe(true);
+  });
+
+  it('stores conversations with messages and timestamps', async () => {
+    const conversation = await createConversation();
+    expect(conversation.messages).toEqual([]);
+
+    await appendMessage(conversation.id, 'user', 'What is Cpk?');
+    await appendMessage(conversation.id, 'assistant', 'Advisory answer.');
+
+    const stored = await getConversation(conversation.id);
+    expect(stored?.messages).toHaveLength(2);
+    expect(stored?.messages[0].content).toBe('What is Cpk?');
+    expect(stored?.messages[0].role).toBe('user');
+    expect(stored?.messages[0].createdAt).toBeTruthy();
+    expect(stored?.title).toBe('What is Cpk?');
+    expect(stored?.updatedAt).toBeTruthy();
+
+    const all = await listConversations(10);
+    expect(all.some((item) => item.id === conversation.id)).toBe(true);
   });
 });

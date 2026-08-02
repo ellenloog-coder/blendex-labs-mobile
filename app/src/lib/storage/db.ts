@@ -1,13 +1,14 @@
 export const DB_NAME = 'blendex-labs';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
-export const STORES = ['settings', 'drafts', 'knowledgeProgress'] as const;
+export const STORES = ['settings', 'drafts', 'knowledgeProgress', 'conversations'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const KEY_PATHS: Record<StoreName, string> = {
   settings: 'key',
   drafts: 'id',
   knowledgeProgress: 'slug',
+  conversations: 'id',
 };
 
 let dbPromise: Promise<IDBDatabase> | null = null;

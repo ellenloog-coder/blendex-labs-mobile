@@ -1,65 +1,134 @@
 <script lang="ts">
   import { get } from 'svelte/store';
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import Button from '../components/Button.svelte';
   import Chip from '../components/Chip.svelte';
   import Icon from '../components/Icon.svelte';
+  import { askAssistant } from '../ai/gateway';
   import {
-    demoPopularTopics,
-    demoRecentConversations,
-    pickDemoReply,
-  } from '../demo/preview-data';
-  import type { DemoConversationItem } from '../demo/preview-data';
-  import { t } from '../i18n';
+    appendMessage,
+    createConversation,
+    listConversations,
+  } from '../ai/conversation-store';
+  import type { Conversation, ConversationMessage } from '../ai/conversation-store';
+  import { demoPopularTopics } from '../demo/preview-data';
+  import { locale, t } from '../i18n';
   import type { RouteParams } from '../router/routes';
 
   let { params = {} }: { params?: RouteParams } = $props();
 
-  interface ChatMessage {
-    id: number;
-    role: 'user' | 'assistant';
-    text: string;
-    demo?: boolean;
+  interface ChatMessage extends ConversationMessage {
+    pending?: boolean;
+    error?: boolean;
   }
-
-  let messages = $state<ChatMessage[]>([]);
-  let draft = $state('');
-  let replyTimer: ReturnType<typeof setTimeout> | undefined;
-  let nextId = 1;
 
   const suggestionChips = ['Cpk', 'SPC', '8D', 'MSA'];
 
-  function push(role: ChatMessage['role'], text: string, demo = false): void {
-    messages = [...messages, { id: nextId++, role, text, demo }];
+  let messages = $state<ChatMessage[]>([]);
+  let conversationId = $state<string | null>(null);
+  let draft = $state('');
+  let busy = $state(false);
+  let lastQuestion = $state('');
+  let recent = $state<Conversation[]>([]);
+
+  onMount(async () => {
+    recent = await listConversations(10);
+  });
+
+  async function ensureConversation(): Promise<string> {
+    if (conversationId) return conversationId;
+    const conversation = await createConversation();
+    conversationId = conversation.id;
+    return conversation.id;
   }
 
-  function sendMessage(content?: string): void {
+  async function sendMessage(content?: string): Promise<void> {
     const text = (content ?? draft).trim();
-    if (!text) return;
-    push('user', text);
+    if (!text || busy) return;
+
+    const id = await ensureConversation();
+    // History excludes the current question (the worker receives it as user_question).
+    const history = messages
+      .filter((message) => !message.pending && !message.error)
+      .slice(-8)
+      .map((message) => ({ role: message.role, content: message.content }));
+
+    const userMessage = await appendMessage(id, 'user', text);
+    messages = [...messages, userMessage];
     draft = '';
-    if (replyTimer) clearTimeout(replyTimer);
-    replyTimer = setTimeout(() => {
-      push('assistant', get(t)(pickDemoReply(text)), true);
-    }, 600);
+    lastQuestion = text;
+    busy = true;
+    messages = [
+      ...messages,
+      {
+        id: `pending-${Date.now()}`,
+        role: 'assistant',
+        content: '',
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ];
+
+    try {
+      const answer = await askAssistant(text, {
+        history,
+        language: get(locale) === 'zh-CN' ? 'zh' : 'en',
+      });
+      messages = messages.filter((message) => !message.pending);
+      const assistantMessage = await appendMessage(id, 'assistant', answer);
+      messages = [...messages, assistantMessage];
+    } catch (error) {
+      messages = messages.filter((message) => !message.pending);
+      const code = (error as { code?: string })?.code;
+      messages = [
+        ...messages,
+        {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content:
+            code === 'origin'
+              ? get(t)('assistant.errorOrigin')
+              : get(t)('assistant.errorUnavailable'),
+          createdAt: new Date().toISOString(),
+          error: true,
+        },
+      ];
+    } finally {
+      busy = false;
+      recent = await listConversations(10);
+    }
+  }
+
+  function retry(): void {
+    if (!lastQuestion || busy) return;
+    void sendMessage(lastQuestion);
   }
 
   function onInput(event: Event): void {
     draft = (event.currentTarget as HTMLInputElement).value;
   }
 
-  function startConversation(item: DemoConversationItem): void {
-    messages = [];
-    push('user', get(t)(item.titleKey));
-    if (replyTimer) clearTimeout(replyTimer);
-    replyTimer = setTimeout(() => {
-      push('assistant', get(t)(pickDemoReply(item.titleKey)), true);
-    }, 600);
+  async function openConversation(conversation: Conversation): Promise<void> {
+    conversationId = conversation.id;
+    messages = conversation.messages.map((message) => ({ ...message }));
   }
 
-  onDestroy(() => {
-    if (replyTimer) clearTimeout(replyTimer);
-  });
+  async function startNewConversation(): Promise<void> {
+    conversationId = null;
+    messages = [];
+    recent = await listConversations(10);
+  }
+
+  function formatTime(iso: string): string {
+    const date = new Date(iso);
+    const localeTag = get(locale) === 'zh-CN' ? 'zh-CN' : 'en-US';
+    return date.toLocaleString(localeTag, {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
 </script>
 
 <section class="page assistant">
@@ -75,11 +144,18 @@
   {#if messages.length > 0}
     <div class="thread" aria-label={$t('assistant.conversation')}>
       {#each messages as message (message.id)}
-        <div class="bubble bubble-{message.role}">
-          {#if message.role === 'assistant'}
-            <span class="role-label">{$t('assistant.demoLabel')}</span>
+        <div class="bubble bubble-{message.role}" class:error={message.error}>
+          {#if message.role === 'assistant' && !message.pending}
+            <span class="role-label">{$t('assistant.aiLabel')}</span>
           {/if}
-          <p>{message.text}</p>
+          {#if message.pending}
+            <p class="thinking">{$t('assistant.thinking')}</p>
+          {:else}
+            <p>{message.content}</p>
+            {#if message.error}
+              <button class="retry" onclick={retry}>{$t('assistant.retry')}</button>
+            {/if}
+          {/if}
         </div>
       {/each}
     </div>
@@ -98,27 +174,51 @@
       class="composer-input"
       placeholder={$t('assistant.placeholder')}
       value={draft}
+      disabled={busy}
       oninput={onInput}
       onkeydown={(event) => {
         if (event.key === 'Enter') sendMessage();
       }}
     />
-    <Button variant="icon" ariaLabel={$t('assistant.send')} onclick={() => sendMessage()}>
+    <Button
+      variant="icon"
+      ariaLabel={$t('assistant.send')}
+      disabled={busy}
+      onclick={() => sendMessage()}
+    >
       <Icon name="send" size={20} />
     </Button>
   </div>
 
   <section class="block">
-    <h3 class="block-title">{$t('assistant.recentConversations')}</h3>
-    <div class="conversations">
-      {#each demoRecentConversations as item (item.id)}
-        <button class="conversation" onclick={() => startConversation(item)}>
-          <span class="conv-title">{$t(item.titleKey)}</span>
-          <span class="conv-summary">{$t(item.summaryKey)}</span>
-          <span class="conv-time">{$t(item.timeKey)}</span>
-        </button>
-      {/each}
+    <div class="block-head">
+      <h3 class="block-title">{$t('assistant.recentConversations')}</h3>
+      <button class="link" onclick={startNewConversation}>
+        {$t('assistant.newConversation')}
+      </button>
     </div>
+    {#if recent.length > 0}
+      <div class="conversations">
+        {#each recent as conversation (conversation.id)}
+          <button
+            class="conversation"
+            class:active={conversation.id === conversationId}
+            onclick={() => openConversation(conversation)}
+          >
+            <span class="conv-title">
+              {conversation.title || $t('assistant.newConversation')}
+            </span>
+            <span class="conv-summary">
+              {conversation.messages[conversation.messages.length - 1]?.content.slice(0, 48) ??
+                ''}
+            </span>
+            <span class="conv-time">{formatTime(conversation.updatedAt)}</span>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <p class="note">{$t('assistant.emptyConversations')}</p>
+    {/if}
   </section>
 
   <section class="block">
@@ -132,7 +232,8 @@
     </div>
   </section>
 
-  <p class="note note-center">{$t('assistant.demoNotice')}</p>
+  <p class="note note-center">{$t('assistant.advisoryNote')}</p>
+  <p class="note note-center">{$t('assistant.privacyNote')}</p>
 </section>
 
 <style>
@@ -203,6 +304,10 @@
     box-shadow: var(--shadow-card);
     border-bottom-left-radius: 4px;
   }
+  .bubble.error {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+  }
   .role-label {
     display: block;
     margin-bottom: 4px;
@@ -213,6 +318,20 @@
   }
   .bubble p {
     margin: 0;
+  }
+  .thinking {
+    color: var(--color-faint);
+    font-style: italic;
+  }
+  .retry {
+    display: block;
+    margin-top: 8px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-danger);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
   }
   .composer {
     display: flex;
@@ -236,6 +355,9 @@
   .composer-input::placeholder {
     color: var(--color-faint);
   }
+  .composer-input:disabled {
+    opacity: 0.6;
+  }
   .composer :global(.btn-icon) {
     display: flex;
     align-items: center;
@@ -245,6 +367,22 @@
     border-radius: 50%;
     background: var(--color-brand);
     color: var(--color-surface);
+  }
+  .composer :global(.btn-icon:disabled) {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .link {
+    border: none;
+    background: none;
+    color: var(--color-brand);
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
   }
   .conversations {
     display: flex;
@@ -264,12 +402,23 @@
     box-shadow: var(--shadow-card);
     text-align: left;
   }
+  .conversation.active {
+    outline: 2px solid var(--color-brand);
+  }
   .conv-title {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 14px;
     font-weight: var(--font-weight-semibold);
     color: var(--color-ink);
   }
   .conv-summary {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 12px;
     color: var(--color-secondary);
   }
