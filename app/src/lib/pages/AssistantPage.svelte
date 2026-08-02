@@ -65,9 +65,11 @@
 <section class="page assistant">
   <header class="hero">
     <span class="sparkle"><Icon name="assistant" size={38} strokeWidth={1.4} /></span>
-    <h2 class="title">{$t('assistant.title')}</h2>
-    <p class="subtitle">{$t('assistant.subtitle1')}</p>
-    <p class="subtitle">{$t('assistant.subtitle2')}</p>
+    <div class="hero-text">
+      <h2 class="title">{$t('assistant.title')}</h2>
+      <p class="subtitle">{$t('assistant.subtitle1')}</p>
+      <p class="subtitle">{$t('assistant.subtitle2')}</p>
+    </div>
   </header>
 
   {#if messages.length > 0}
@@ -139,10 +141,10 @@
   }
   .hero {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 4px;
-    text-align: center;
+    text-align: left;
+    gap: 14px;
   }
   .sparkle {
     display: flex;
@@ -150,10 +152,16 @@
     justify-content: center;
     width: 64px;
     height: 64px;
-    margin-bottom: 8px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: var(--color-brand-soft);
     color: var(--color-brand);
+  }
+  .hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
   .title {
     font-size: var(--font-size-title);

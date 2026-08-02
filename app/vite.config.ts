@@ -3,7 +3,15 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * Deployment base path.
+ * - Cloudflare Pages / custom domain / user-site GitHub Pages: leave unset (served at root).
+ * - GitHub Pages project site: BASE_PATH=/<repository-name>/ (e.g. /blendex-labs-mobile/).
+ */
+const base = process.env.BASE_PATH || '/';
+
 export default defineConfig({
+  base,
   plugins: [
     svelte(),
     VitePWA({
@@ -14,8 +22,8 @@ export default defineConfig({
         short_name: 'Blendex',
         description: 'Local-first quality engineering mobile workspace.',
         lang: 'en',
-        start_url: '/',
-        scope: '/',
+        start_url: './',
+        scope: './',
         display: 'standalone',
         background_color: '#fafafc',
         theme_color: '#6366f1',
@@ -27,7 +35,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
       },
     }),
   ],
