@@ -9,18 +9,37 @@
  * Usage:
  *   npm run import:knowledge
  *   KNOWLEDGE_SOURCE=/path/to/knowledge npm run import:knowledge
+ *   npm run import:knowledge -- --remote   # fetch latest from the website repo
  *
  * The source repository is never modified.
  */
-import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import {
+  access,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const DEFAULT_SOURCE = '/Users/ellen/Documents/main toolkit/quality-engineering-tools/knowledge';
-const sourceDir = path.resolve(process.env.KNOWLEDGE_SOURCE ?? DEFAULT_SOURCE);
 const appRoot = fileURLToPath(new URL('..', import.meta.url));
 const outFile = path.join(appRoot, 'src/content/knowledge.generated.json');
 const assetsDir = path.join(appRoot, 'public/knowledge-assets');
+
+const REMOTE_REPO = 'https://github.com/ellenloog-coder/quality-engineering-tools';
+const REMOTE_BRANCH = 'main';
+const REMOTE_TARBALL_URL = `${REMOTE_REPO}/archive/refs/heads/${REMOTE_BRANCH}.tar.gz`;
+const REMOTE_EXTRACT_ROOT = `quality-engineering-tools-${REMOTE_BRANCH}`;
 
 const CATEGORY_MAP = [
   { id: 'methodology', names: ['方法论与标准解读', 'Methodology & Standards'] },
@@ -109,6 +128,48 @@ function extractListItems(html) {
     }
   }
   return items;
+}
+
+/* --- Remote fetch (fetch-at-build sync) --- */
+async function resolveCommitSha() {
+  try {
+    const { stdout } = await execFileAsync('git', [
+      'ls-remote',
+      `${REMOTE_REPO}.git`,
+      `refs/heads/${REMOTE_BRANCH}`,
+    ]);
+    const sha = stdout.trim().split(/\s+/)[0];
+    if (/^[0-9a-f]{40}$/.test(sha)) return sha;
+  } catch {
+    // fall through to the GitHub API
+  }
+  const response = await fetch(
+    `https://api.github.com/repos/ellenloog-coder/quality-engineering-tools/commits/${REMOTE_BRANCH}`,
+  );
+  if (!response.ok) {
+    throw new Error(`Unable to resolve source commit SHA (HTTP ${response.status})`);
+  }
+  const data = await response.json();
+  if (typeof data?.sha !== 'string') {
+    throw new Error('Unable to resolve source commit SHA');
+  }
+  return data.sha;
+}
+
+async function fetchRemoteKnowledge() {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'knowledge-remote-'));
+  const tarballPath = path.join(tmp, 'repo.tar.gz');
+  const response = await fetch(REMOTE_TARBALL_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to download repository (HTTP ${response.status})`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await writeFile(tarballPath, buffer);
+  await execFileAsync('tar', ['-xzf', tarballPath, '-C', tmp]);
+  const knowledgeDir = path.join(tmp, REMOTE_EXTRACT_ROOT, 'knowledge');
+  await access(knowledgeDir);
+  const sourceCommit = await resolveCommitSha();
+  return { tmp, knowledgeDir, sourceCommit };
 }
 
 function extractMetaRegion(html, className) {
@@ -217,6 +278,29 @@ async function main() {
   await mkdir(assetsDir, { recursive: true });
   await mkdir(path.dirname(outFile), { recursive: true });
 
+  const remote = process.argv.includes('--remote');
+  let sourceDir = process.env.KNOWLEDGE_SOURCE
+    ? path.resolve(process.env.KNOWLEDGE_SOURCE)
+    : DEFAULT_SOURCE;
+  let sourceMeta = {
+    source: 'main toolkit/quality-engineering-tools/knowledge (read-only)',
+    sourceUrl: 'local',
+    sourceCommit: null,
+  };
+  let tempDir = null;
+
+  if (remote) {
+    const fetched = await fetchRemoteKnowledge();
+    tempDir = fetched.tmp;
+    sourceDir = fetched.knowledgeDir;
+    sourceMeta = {
+      source: `${REMOTE_REPO} knowledge/ (remote fetch)`,
+      sourceUrl: `${REMOTE_REPO}/tree/${REMOTE_BRANCH}/knowledge`,
+      sourceCommit: fetched.sourceCommit,
+    };
+  }
+
+  try {
   const allFiles = (await readdir(sourceDir)).filter(
     (name) => /\.(md|html)$/.test(name) && !name.startsWith('index') && !name.includes('template'),
   );
@@ -268,16 +352,24 @@ async function main() {
   articles.sort((a, b) => a.slug.localeCompare(b.slug));
 
   const output = {
-    source: 'main toolkit/quality-engineering-tools/knowledge (read-only)',
+    ...sourceMeta,
     generatedAt: new Date().toISOString(),
     articleCount: articles.length,
     articles,
   };
 
   await writeFile(outFile, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
-  console.log(`Imported ${articles.length} articles -> ${path.relative(appRoot, outFile)}`);
+  console.log(
+    `Imported ${articles.length} articles -> ${path.relative(appRoot, outFile)}` +
+      (remote ? ` (commit ${sourceMeta.sourceCommit})` : ''),
+  );
   for (const a of articles) {
     console.log(`  [${a.locale}] ${a.slug} (${a.categoryId}) pair=${a.pairSlug ?? '-'}`);
+  }
+  } finally {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   }
 }
 

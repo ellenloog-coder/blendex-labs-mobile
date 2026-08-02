@@ -25,6 +25,8 @@ export interface KnowledgeArticle {
 
 export interface KnowledgeIndex {
   source: string;
+  sourceUrl: string;
+  sourceCommit: string | null;
   generatedAt: string;
   articleCount: number;
   articles: KnowledgeArticle[];

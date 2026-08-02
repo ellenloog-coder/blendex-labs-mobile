@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "import:knowledge": "node scripts/import-knowledge.mjs"
+    "import:knowledge": "node scripts/import-knowledge.mjs",
+    "sync:knowledge": "node scripts/import-knowledge.mjs --remote",
+    "build:production": "npm run import:knowledge -- --remote && npm run build"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.0.0",

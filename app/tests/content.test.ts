@@ -3,11 +3,19 @@ import { articles, knowledgeIndex } from '../src/lib/knowledge/data';
 import { categories } from '../src/lib/knowledge/categories';
 
 describe('knowledge content index', () => {
-  it('imports the expected bilingual article set', () => {
-    expect(knowledgeIndex.articleCount).toBe(10);
-    expect(articles).toHaveLength(10);
-    expect(articles.filter((article) => article.locale === 'en')).toHaveLength(5);
-    expect(articles.filter((article) => article.locale === 'zh-CN')).toHaveLength(5);
+  it('imports a complete bilingual article set', () => {
+    expect(knowledgeIndex.articleCount).toBeGreaterThan(0);
+    expect(articles).toHaveLength(knowledgeIndex.articleCount);
+    const en = articles.filter((article) => article.locale === 'en');
+    const zh = articles.filter((article) => article.locale === 'zh-CN');
+    expect(en.length).toBe(zh.length);
+    expect(en.length).toBe(knowledgeIndex.articleCount / 2);
+  });
+
+  it('records sync metadata (source, commit, generatedAt)', () => {
+    expect(knowledgeIndex.generatedAt).toBeTruthy();
+    expect(knowledgeIndex.sourceUrl).toBeTruthy();
+    expect('sourceCommit' in knowledgeIndex).toBe(true);
   });
 
   it('every article has a valid bilingual pair', () => {

@@ -29,7 +29,9 @@ The preview implements the complete mobile product experience per the UI spec: H
 - `npm run preview` — preview the production build
 - `npm run check` — svelte-check / TypeScript
 - `npm test` — unit tests (i18n, router)
-- `npm run import:knowledge` — regenerate the offline knowledge index from the source repository (read-only import)
+- `npm run import:knowledge` — regenerate the offline knowledge index from the local source folder (read-only import)
+- `npm run sync:knowledge` — fetch the latest knowledge from the website repo (`quality-engineering-tools`, `main`) and regenerate the index
+- `npm run build:production` — sync knowledge from the website repo, then build (used by Cloudflare Pages)
 
 ## Boundaries
 

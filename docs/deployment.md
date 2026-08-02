@@ -52,6 +52,13 @@ cd app
 npm ci
 npm run build          # output: app/dist
 
+# Production build with knowledge sync (fetch-at-build from the website repo)
+cd app
+npm run build:production   # = npm run import:knowledge -- --remote && npm run build
+# or explicitly:
+npm run import:knowledge -- --remote
+npm run build
+
 # GitHub Pages project site (subpath base)
 cd app
 BASE_PATH=/<repository-name>/ npm run build
@@ -127,14 +134,27 @@ Only if you prefer committing build output: unignore `app/dist`, push to `gh-pag
 2. Build configuration:
    - **Framework preset:** None (static)
    - **Root directory:** `/app`
-   - **Build command:** `npm ci && npm run build`
+   - **Build command:** `npm ci && npm run import:knowledge -- --remote && npm run build`
    - **Build output directory:** `dist`
 3. Environment variables (Production + Preview):
    - `NODE_VERSION` = `22`
    - Do **not** set `BASE_PATH` (Cloudflare serves at the site root).
 4. Deploy. Expected URL: `https://<project-name>.pages.dev` (custom domain optional; still root-based).
 
-> Alternative without a root directory: keep root `/`, build command `cd app && npm ci && npm run build`, output directory `app/dist`.
+> Alternative without a root directory: keep root `/`, build command `cd app && npm ci && npm run import:knowledge -- --remote && npm run build`, output directory `app/dist`.
+
+### Knowledge sync (fetch-at-build)
+
+Every production build downloads the latest knowledge content from the website repository
+(`ellenloog-coder/quality-engineering-tools`, branch `main`) via its public tarball,
+extracts `knowledge/` + `assets/knowledge/`, records the source commit SHA, and regenerates
+`app/src/content/knowledge.generated.json` before bundling. Details:
+
+- The sync is **build-time only** — no runtime API dependency; the shipped app stays a static, offline-capable bundle.
+- `npm run sync:knowledge` runs the remote sync alone; `npm run build:production` runs sync + build.
+- Generated metadata: `sourceUrl`, `sourceCommit`, `generatedAt` are written into the knowledge index.
+- **Fallback:** the generated index is committed, so a plain `npm run build` (local/offline dev) keeps working without network; the remote sync only runs when explicitly invoked (or via the Cloudflare build command above).
+- If the remote fetch fails, the build stops with a clear error so CI never silently ships stale content.
 
 ---
 
